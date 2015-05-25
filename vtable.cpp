@@ -161,19 +161,57 @@ get_vtable_class_name (
     return buffer;
 }
 
-/*
-* @brief : Check if there's a vtable at address, and dump into to output
-* @param address : The vtable address. Can point to any address.
-* @param output : An opened FILE
-* @return position after the end of vtable
-*/
+char *
+classname_filter (
+    char *className,
+    char **forClass
+) {
+    if (forClass != NULL) {
+        *forClass = NULL;
+    }
+
+    // Remove const_ prefix
+    if ((strncmp (className, "const ", strlen ("const ")) == 0)
+    ||  (strncmp (className, "const_", strlen ("const_")) == 0)
+    ) {
+        className += strlen ("const ");
+    }
+
+    char *forPos = strstr (className, "{for `");
+    char *vftablePos = strstr (className, "`vftable'");
+    if (forPos) {
+        forPos += strlen ("{for `");
+        char *endSubClass = strstr (forPos, "'");
+        if (endSubClass) {
+            *endSubClass = '\0';
+            if (forClass != NULL) {
+                *forClass = forPos;
+            }
+        }
+    }
+    if (vftablePos) {
+        *vftablePos = '\0';
+    }
+
+    return className;
+}
+
+void
+exploreMethod (
+    ea_t address,
+    char *methodName
+) {
+
+}
+
 void 
 parse_vtable (
-    ea_t address
+    ea_t address,
+    size_t methodsCount
 ) {
-    char buffer2[2048] = {0};
-    char *typeName = get_type_name (address, buffer2, sizeof (buffer2));
-    char buffer[2048] = {0};
+    char typeName[4096] = {0};
+    get_type_name (address, typeName, sizeof (typeName));
+    char buffer[4096] = {0};
 
     if (strncmp (typeName, ".?A", 3) == 0)
     {
@@ -192,31 +230,78 @@ parse_vtable (
             IDAUtils::MakeName (address, buffer);
             vtableCount++;
             
+            char className_buf[4096] = {0};
+            char *className = className_buf;
+            // Get the demangled name
+            get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
+
+            className = classname_filter (className, NULL);
+
+            // Rename the methods in the vftable
+            for (size_t methodIdx = 0; methodIdx < methodsCount; methodIdx++) {
+                char methodName[4096];
+                IDAUtils::Name (get_long (address + (methodIdx * 4)), methodName, sizeof (methodName));
+
+                // Rename them only if they aren't named yet
+                if (strncmp (methodName, "sub_", 4) == 0) {
+                    sprintf_s (methodName, sizeof (methodName), "%s_virt%d", className, methodIdx + 1);
+                    IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
+                }
+
+                exploreMethod (get_long (address + (methodIdx * 4)), methodName);
+            }
+
             sprintf_s (buffer, sizeof (buffer), "??_R4%s6B@", &typeName[4]);
             // Set the RTTI Complete Object Locator name
             IDAUtils::MakeName (get_long (address - 4), buffer);
         }
 
-        else { 
+        else {
             // Multiple inheritance
-            char vtableClassName[2048] = {0};
+            char vtableClassName[4096] = {0};
             get_vtable_class_name (get_long (address - 4), vtableClassName, sizeof (vtableClassName));
-            char vtableName[2048] = {0};
-            char COLName[2048] = {0};
+            char vtableName[4096] = {0};
+            char COLName[4096] = {0};
             sprintf_s (buffer, sizeof (buffer), "%s6B%s@", &typeName[4], &vtableClassName[4]);
             sprintf_s (vtableName, sizeof (vtableName),  "??_7%s", buffer);
             sprintf_s (COLName, sizeof (COLName), "??_R4%s", buffer);
-            
+
             // Set the VFTable name
             IDAUtils::MakeName (address, vtableName);
             vtableCount++;
 
+            // Get the demangled name
+            char className_buf[4096] = {0};
+            char *className = className_buf;
+            get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
+            
+            // Filter the class name
+            char *forClass;
+            className = classname_filter (className, &forClass);
+            
+            // Rename the methods in the vftable
+            for (size_t methodIdx = 0; methodIdx < methodsCount; methodIdx++) {
+                char methodName[4096];
+                IDAUtils::Name (get_long (address + (methodIdx * 4)), methodName, sizeof (methodName));
+
+                // Rename them only if they aren't named yet
+                if (strncmp (methodName, "sub_", 4) == 0) {
+                    if (forClass) {
+                        sprintf_s (methodName, sizeof (methodName), "%svirt%d_for_%s", className, methodIdx + 1, forClass);
+                    }
+                    else {
+                        sprintf_s (methodName, sizeof (methodName), "%svirt%d", className, methodIdx + 1);
+                    }
+
+                    IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
+                }
+            }
+            
             // Set the RTTI Complete Object Locator name
             IDAUtils::MakeName (get_long (address - 4), COLName);
         }
     }
 }
-
 
 char *
 get_vtable_class_name_2 (
@@ -246,7 +331,6 @@ get_vtable_class_name_2 (
 
     return NULL;
 }
-
 
 ea_t 
 get_func_start (
@@ -541,7 +625,7 @@ do_vtable (
     endTable = get_long (address - 4);
 
     if (CompleteObjectLocator::isValid (endTable)) {
-        parse_vtable (address);
+        parse_vtable (address, vtableMethodsCount);
         if (name == NULL) {
             name = get_vtable_class_name_2 (endTable, buffer, sizeof (buffer));
         }

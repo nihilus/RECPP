@@ -54,12 +54,13 @@ get_vtable_class_name (
 /*
 * @brief : Check if there's a vtable at address, and dump into to output
 * @param address : The vtable address. Can point to any address.
-* @param output : An opened FILE
+* @param methodsCount : Number of methods in the current vtable
 * @return position after the end of vtable
 */
 void 
 parse_vtable (
-    ea_t address
+    ea_t address,
+    size_t methodsCount
 );
 
 

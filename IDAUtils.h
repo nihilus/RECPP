@@ -54,12 +54,6 @@ class IDAUtils {
         char *cmt
     );
 
-    bool
-    IDAUtils::MakeNameForce (
-        ea_t address,
-        char *name
-    );
-
     /*
     * @brief : Make dword, undefine as needed
     * @param address : The start address

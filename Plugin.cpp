@@ -73,7 +73,7 @@ ui_callback (
             // clear the current user-defined menu (may clear items added by other plugins, so not recommended)
             set_custom_viewer_popup_menu(view, NULL);
 
-            add_custom_viewer_popup_item(view, "Scan vftables", "Ctrl-5", user_menu_scan_vftable, NULL);
+            add_custom_viewer_popup_item(view, "Scan and rename vftables", "", user_menu_scan_vftable, NULL);
         break;
     }
 
@@ -90,8 +90,14 @@ init (
     if (!init_hexrays_plugin ()) {
 	    return PLUGIN_SKIP;
     }
+    
+    msg (" |||||.  |||||||` ||||||` |||||.  |||||.  \n"
+         " ||+--|| ||+----`||+----` ||+--|| ||+--|| \n"
+         " ||||||+ |||||`  |||      ||||||' ||||||' \n"
+         " ||+--|| ||+--`  |||      ||+---` ||+---` \n"
+         " |||  || |||||||`+||||||` |||     |||     \n"
+         " +-`  +-` ------` +-----` +-`     +-`     \n");
 
-    msg ("=====================[ RE CPP ]=====================\n");
     hook_to_notification_point (HT_VIEW, ui_callback, NULL); 
     // install_hexrays_callback (callback, NULL);
     inited = true;
