@@ -29,6 +29,15 @@
 #define SN_scalardtr   4
 #define SN_vectordtr   5
 
+
+#define STRUC_ERROR_MEMBER_NAME    (-1) // already has member with this name (bad name)
+#define STRUC_ERROR_MEMBER_OFFSET  (-2) // already has member at this offset
+#define STRUC_ERROR_MEMBER_SIZE    (-3) // bad number of bytes or bad sizeof(type)
+#define STRUC_ERROR_MEMBER_TINFO   (-4) // bad typeid parameter
+#define STRUC_ERROR_MEMBER_STRUCT  (-5) // bad struct id (the 1st argument)
+#define STRUC_ERROR_MEMBER_UNIVAR  (-6) // unions can't have variable sized members
+#define STRUC_ERROR_MEMBER_VARLAST (-7) // variable sized member should be the last member in the structure
+
 // ------ Class declaration -------
 class IDAUtils {
     public:
@@ -73,8 +82,36 @@ class IDAUtils {
         ea_t address, 
         size_t size
     );
-
     
+    /*
+    * @brief : 
+    */
+    static tid_t 
+    IDAUtils::AddStrucEx (
+        uval_t index,
+        char *name,
+        bool is_union
+    );
+    
+    /*
+    * @brief : 
+    */
+    static bool
+    IDAUtils::SetMemberComment (
+        tid_t id,
+        asize_t member_offset,
+        char *comment,
+        bool repeatable
+    );
+
+    /*
+    * @brief : 
+    */
+    static tid_t
+    IDAUtils::GetStrucIdByName (
+        char *name
+    );
+
     /*
     * @brief : Make an address as a DWORD
     * @param address : The start address
@@ -84,6 +121,17 @@ class IDAUtils {
         ea_t address
     );
     
+    /*
+    * @brief : 
+    */
+    static char *
+    IDAUtils::GetMemberName (
+        long id,
+        long offset,
+        char *buffer,
+        size_t bufferSize
+    );
+
     /*
     * @brief : Set a comment at \address
     * @param address : The start address
@@ -501,7 +549,7 @@ class IDAUtils {
     /*
     * @brief :
     */
-    static void
+    static bool
     IDAUtils::SetMemberName (
         long id,
         long member_offset,
@@ -517,7 +565,18 @@ class IDAUtils {
         int offset, 
         char *name
     );
-    
+
+    /*
+    * @brief :
+    */
+    static bool
+    IDAUtils::ForceMethodMember (
+        tid_t id, 
+        int offset, 
+        char *name,
+        size_t nameSize
+    );
+
     /*
     * @brief :
     */

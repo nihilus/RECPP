@@ -55,6 +55,22 @@ IDAUtils::getAsciizStr (
     return buffer;
 }
 
+tid_t
+IDAUtils::GetStrucIdByName (
+    char *name
+) {
+    return get_struc_id (name);
+}
+
+tid_t 
+IDAUtils::AddStrucEx (
+    uval_t index,
+    char *name,
+    bool is_union
+) {
+    return add_struc (index, name, is_union);
+}
+
 void 
 IDAUtils::DeleteArray (
     int id
@@ -188,6 +204,10 @@ IDAUtils::GetFrameArgsSize (
     ea_t address
 ) {
     func_t *f = get_func (address);
+    if (!f) {
+        return 0;
+    }
+
     area_t range;
     get_frame_part (f, FPC_ARGS, &range);
     return range.size ();
@@ -259,7 +279,7 @@ IDAUtils::ForceStrucMember (
         }
         
         IDAUtils::AddStrucMember(id,name,offset,FF_DATA|FF_STRU,sub_id,i);
-        //SetMemberName(id, offset, name);
+        // IDAUtils::SetMemberName(id, offset, name);
     }
 }
 
@@ -370,13 +390,43 @@ IDAUtils::AddStrucMember (
     return add_struc_member (get_struc (id), name, offset, flag, &mt, nbytes);
 }
 
-void
+bool
 IDAUtils::SetMemberName (
     long id,
     long member_offset,
     char *name
 ) {
-    set_member_name (get_struc (id), member_offset, name);
+    return set_member_name (get_struc (id), member_offset, name);
+}
+
+char *
+IDAUtils::GetMemberName (
+    long id,
+    long offset,
+    char *buffer,
+    size_t bufferSize
+) {
+    member_t *m = get_member (get_struc(id), offset);
+    if (!m) {
+        msg ("Bad member (ID=%x - offet = %d)\n", id, offset);
+        buffer[0] = '\0';
+        return buffer;
+    }
+
+    tid_t memberId = m->id;
+    get_member_name (memberId, buffer, bufferSize);
+    return buffer;
+}
+
+bool
+IDAUtils::SetMemberComment (
+    tid_t id,
+    asize_t member_offset,
+    char *comment,
+    bool repeatable
+) {
+    member_t *m = get_member(get_struc (id), member_offset);
+    return set_member_cmt (m, comment, repeatable);
 }
 
 void
@@ -388,6 +438,39 @@ IDAUtils::ForceDWMember (
     if (IDAUtils::AddStrucMember (id, name, offset, FF_DWRD, -1, 4) != 0) {
         IDAUtils::SetMemberName (id, offset, name);
     }
+}
+
+bool
+IDAUtils::ForceMethodMember (
+    tid_t id, 
+    int offset, 
+    char *name,
+    size_t nameSize
+) {
+    int status;
+
+    char completeName[4096] = {0};
+    if ((status = IDAUtils::AddStrucMember (id, name, offset, FF_DWRD | FF_DATA, -1, 4)) != 0) {
+        if (status != STRUC_ERROR_MEMBER_OFFSET && status != STRUC_ERROR_MEMBER_NAME) {
+            return false;
+        }
+
+        if (!(IDAUtils::SetMemberName (id, offset, name))) {
+            int suffixId = 1;
+            do {
+                if (suffixId > 1000) {
+                    // Alright, let's give up
+                    return false;
+                }
+                sprintf_s (completeName, sizeof (completeName), "%s_%d", name, suffixId++);
+            } while (IDAUtils::AddStrucMember (id, completeName, offset, FF_DWRD | FF_DATA, -1, 4) != 0);
+        }
+        else {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 ea_t

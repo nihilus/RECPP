@@ -197,6 +197,56 @@ classname_filter (
 }
 
 void
+create_struct_from_vtable (
+    ea_t vtableAddress,
+    size_t methodsCount,
+    char *className
+) {
+    if (strlen (className) == 0) {
+        return;
+    }
+
+    char structName [4096] = {0};
+    sprintf_s (structName, sizeof (structName), "%svtable", className);
+
+    tid_t struct_id = IDAUtils::GetStrucIdByName (structName);
+
+    if (struct_id != -1) {
+        msg ("Structre <%s> already exists.", structName);
+        return;
+    }
+
+    struct_id = IDAUtils::AddStrucEx (-1, structName, 0);
+
+    if (struct_id == -1) {
+        msg ("Could not create the vtable structure <%s> !\n", structName);
+        return;
+    }
+
+    for (size_t i = 0 ; i < methodsCount ; i++)
+    {
+        char methodName[4096] = {0};
+        ea_t methodAddress = get_long (vtableAddress + i * 4);
+        if (!methodAddress) {
+            continue;
+        }
+
+        IDAUtils::Name (methodAddress, methodName, sizeof (methodName));
+
+        if (strlen (methodName) == 0) {
+            continue;
+        }
+
+        IDAUtils::ForceMethodMember (struct_id, i * 4, methodName, sizeof (methodName));
+
+        /*char comment[4096] = {0};
+        sprintf_s (comment, sizeof (comment), "-> %08X, args: 0x%X", methodAddress, IDAUtils::GetFrameArgsSize (methodAddress));
+        IDAUtils::SetMemberComment (struct_id, i * 4, comment, 1);
+        */
+    }
+}
+
+void
 exploreMethod (
     ea_t address,
     char *methodName
@@ -222,6 +272,9 @@ parse_vtable (
         i = get_long (i + 16); // CHD
         i = get_long (i + 4);  // Attributes
 
+        char className_buf[4096] = {0};
+        char *className = className_buf;
+
         if ((i & 3) == 0 && s2 == 0) {
             // Single inheritance, so we don't need to worry about duplicate names (several vtables)
             sprintf_s (buffer, sizeof (buffer), "??_7%s6B@", &typeName[4]);
@@ -230,8 +283,6 @@ parse_vtable (
             IDAUtils::MakeName (address, buffer);
             vtableCount++;
             
-            char className_buf[4096] = {0};
-            char *className = className_buf;
             // Get the demangled name
             get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
 
@@ -271,8 +322,6 @@ parse_vtable (
             vtableCount++;
 
             // Get the demangled name
-            char className_buf[4096] = {0};
-            char *className = className_buf;
             get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
             
             // Filter the class name
@@ -300,6 +349,8 @@ parse_vtable (
             // Set the RTTI Complete Object Locator name
             IDAUtils::MakeName (get_long (address - 4), COLName);
         }
+
+        create_struct_from_vtable (address, methodsCount, className);
     }
 }
 
