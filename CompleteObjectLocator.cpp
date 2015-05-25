@@ -1,0 +1,67 @@
+#include "CompleteObjectLocator.h"
+#include "IDAUtils.h"
+
+
+CompleteObjectLocator::CompleteObjectLocator (
+    ea_t address
+) {
+    this->signature = address;
+    this->offset = address + 4;
+    this->cdOffset = address + 8;
+    this->pTypeDescriptor = NULL; // new TypeDescriptor (address + 12);
+    this->pClassDescriptor = NULL; // new RTTIClassHierarchyDescriptor (address + 16);
+}
+
+
+CompleteObjectLocator::~CompleteObjectLocator () {
+}
+
+
+
+CompleteObjectLocator *
+CompleteObjectLocator::parse (
+    ea_t address
+) {
+    if (address == BADADDR || !address) {
+        return NULL;
+    }
+
+    char *cloName = IDAUtils::getAsciizStr (get_long (address + 12) + 8);
+
+    msg ("    signature:         %08.8Xh\n", get_long (address));
+    msg ("    offset:            %08.8Xh\n", get_long (address + 4));
+    msg ("    cdOffset:          %08.8Xh\n", get_long (address + 8));
+    msg ("    pTypeDescriptor:   %08.8Xh (%s)\n", get_long (address + 12), IDAUtils::DemangleTIName (cloName));
+    msg ("    pClassDescriptor:  %08.8Xh\n", get_long (address + 16));
+
+    IDAUtils::DwordCmt (address, "signature");
+    IDAUtils::DwordCmt (address + 4, "offset");
+    IDAUtils::DwordCmt (address + 8, "cdOffset");
+    IDAUtils::OffCmt (address + 12, "pTypeDescriptor");
+    IDAUtils::OffCmt (address + 16, "pClassDescriptor");
+
+    //
+    // Parse_CHD(get_long (address + 16));
+
+    return new CompleteObjectLocator (address);
+}
+
+bool
+CompleteObjectLocator::isValid (
+    ea_t address
+) {
+    ea_t x = get_long (address + 12);
+
+    if (!x || (x == BADADDR)) {
+        return 0;
+    }
+
+    x = get_long (x + 8);
+
+                          // .?A
+    if ((x & 0xFFFFFF) == 0x413F2E) {
+        return true;
+    }
+
+    return false;
+}
