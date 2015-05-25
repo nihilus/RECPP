@@ -204,7 +204,7 @@ exploreMethod (
 
 }
 
-void 
+void
 parse_vtable (
     ea_t address,
     size_t methodsCount
