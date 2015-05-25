@@ -33,6 +33,9 @@
     <ClCompile Include="IDAUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vtable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CompleteObjectLocator.h">
@@ -51,6 +54,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RECPP.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vtable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

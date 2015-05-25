@@ -47,9 +47,17 @@ class CompleteObjectLocator {
      * @param address : The address to parse for a CompleteObjectLocator
      * @return true if valid, false otherwise
      */
-    static CompleteObjectLocator *
+    static void
     parse (
         ea_t address
+    );
+
+    
+    static char *
+    get_type_name_by_col (
+        ea_t colAddress,
+        char *buffer,
+        size_t bufferSize
     );
 };
 

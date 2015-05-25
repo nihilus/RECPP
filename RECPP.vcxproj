@@ -80,6 +80,7 @@
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="RTTIBaseClassDescriptor.cpp" />
     <ClCompile Include="RTTIClassHierarchyDescriptor.cpp" />
+    <ClCompile Include="vtable.cpp" />
     <ClCompile Include="TypeDescriptor.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -89,6 +90,7 @@
     <ClInclude Include="RTTIBaseClassDescriptor.h" />
     <ClInclude Include="RTTIClassHierarchyDescriptor.h" />
     <ClInclude Include="TypeDescriptor.h" />
+    <ClInclude Include="vtable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

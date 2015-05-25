@@ -9,7 +9,10 @@ CTypeDescriptor::parse (
         return false;
     }
 
-    char *a = IDAUtils::getAsciizStr (address + 8);
+    char buffer[2048] = {0};
+    char buffer2[2048] = {0};
+
+    char *a = IDAUtils::getAsciizStr (address + 8, buffer2, sizeof (buffer2));
 
     msg ("    pVFTable:          %08.8Xh\n", get_long (address));
     msg ("    spare:             %08.8Xh\n", get_long (address + 4));
@@ -20,8 +23,8 @@ CTypeDescriptor::parse (
     IDAUtils::StrCmt (address + 8, "name");
 
     //??_R0?AVA@@@8 = A `RTTI Type Descriptor'
-    char *newName = asprintf ("??_R0%s@8", &a[1]);
-    IDAUtils::MakeName (address, newName);
+    asprintf (buffer, "??_R0%s@8", &a[1]);
+    IDAUtils::MakeName (address, buffer);
     
     return a;
 }

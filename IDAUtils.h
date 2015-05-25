@@ -40,7 +40,9 @@ class IDAUtils {
     */
     static char *
     getAsciizStr (
-        ea_t address
+        ea_t address,
+        char *buffer,
+        size_t bufferSize
     );
 
     /*
@@ -124,9 +126,11 @@ class IDAUtils {
     * @brief :
     */
     static char *
-    Demangle (
+    IDAUtils::Demangle (
         char *mangledName,
-        uint32 disable_mask
+        uint32 disable_mask,
+        char *buffer,
+        size_t bufferSize
     );
     
     /*
@@ -134,7 +138,9 @@ class IDAUtils {
     */
     static char *
     DemangleTIName (
-        char *mangledName
+        char *mangledName,
+        char *buffer,
+        size_t resultSize
     );
     
     /*
@@ -211,7 +217,8 @@ class IDAUtils {
     */
     static char *
     MangleNumber (
-        int number
+        int number,
+        char *buffer
     );
     
     /*
@@ -409,7 +416,8 @@ class IDAUtils {
     IDAUtils::MakeSpecialName (
         char *name, 
         uint32 type, 
-        uint32 adj
+        uint32 adj,
+        char *buffer
     );
     
     /*
@@ -552,8 +560,8 @@ class IDAUtils {
     );
 };
 
-char *
-asprintf (char *format, ...);
+void
+asprintf (char *buffer, char *format, ...);
 
 int
 str_pos (const char *str, const char *search);

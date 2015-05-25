@@ -20,6 +20,8 @@ CRTTIClassHierarchyDescriptor::parse (
         return NULL;
     }
 
+    char buffer[2048] = {0};
+
     msg ("0x%08.8X: RTTIClassHierarchyDescriptor\n", address);
 
     ea_t a = get_long (address + 4);
@@ -41,18 +43,18 @@ CRTTIClassHierarchyDescriptor::parse (
         ea_t p = get_long (a);
         //Message(indent_str+"    BaseClass[%02d]:  %08.8Xh\n", i, p);
 
-        IDAUtils::OffCmt(a, asprintf ("BaseClass[%02d]", i));
+        asprintf (buffer, "BaseClass[%02d]", i);
+        IDAUtils::OffCmt(a, buffer);
         
         if (i == 0) {
             s = CRTTIBaseClassDescriptor::parse (p);
             //??_R2A@@8 = A::`RTTI Base Class Array'
-            char *baseClass = asprintf ("??_R2%s8", &s[4]);
-            IDAUtils::MakeName(a, baseClass);
-            free (baseClass);
+            asprintf (buffer, "??_R2%s8", &s[4]);
+            IDAUtils::MakeName(a, buffer);
 
             //??_R3A@@8 = A::`RTTI Class Hierarchy Descriptor'
-            char *chd = asprintf ("??_R3%s8", &s[4]);
-            IDAUtils::MakeName (address, chd);
+            asprintf (buffer, "??_R3%s8", &s[4]);
+            IDAUtils::MakeName (address, buffer);
         }
         else {
             s = CRTTIBaseClassDescriptor::parse (p);
