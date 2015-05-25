@@ -32,7 +32,9 @@ class CTypeDescriptor {
 public: 
     static char *
     CTypeDescriptor::parse (
-        ea_t address
+        ea_t address,
+        char *buffer,
+        size_t bufferSize
     );
 };
 

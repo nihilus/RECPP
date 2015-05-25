@@ -1,22 +1,15 @@
+﻿/*
+    ██████╗ ███████╗ ██████╗██████╗ ██████╗ 
+    ██╔══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗
+    ██████╔╝█████╗  ██║     ██████╔╝██████╔╝
+    ██╔══██╗██╔══╝  ██║     ██╔═══╝ ██╔═══╝ 
+    ██║  ██║███████╗╚██████╗██║     ██║     
+    ╚═╝  ╚═╝╚══════╝ ╚═════╝╚═╝     ╚═╝     
+* @license : <license placeholder>
+*/
+
 #include "CompleteObjectLocator.h"
 #include "IDAUtils.h"
-
-
-CompleteObjectLocator::CompleteObjectLocator (
-    ea_t address
-) {
-    this->signature = address;
-    this->offset = address + 4;
-    this->cdOffset = address + 8;
-    this->pTypeDescriptor = NULL; // new TypeDescriptor (address + 12);
-    this->pClassDescriptor = NULL; // new RTTIClassHierarchyDescriptor (address + 16);
-}
-
-
-CompleteObjectLocator::~CompleteObjectLocator () {
-}
-
-
 
 void
 CompleteObjectLocator::parse (
@@ -26,15 +19,8 @@ CompleteObjectLocator::parse (
         return;
     }
     
-    char buffer[2048] = {0};
     char buffer2[2048] = {0};
     char *cloName = IDAUtils::getAsciizStr (get_long (address + 12) + 8, buffer2, sizeof (buffer2));
-
-    msg ("    signature:         %08.8Xh\n", get_long (address));
-    msg ("    offset:            %08.8Xh\n", get_long (address + 4));
-    msg ("    cdOffset:          %08.8Xh\n", get_long (address + 8));
-    msg ("    pTypeDescriptor:   %08.8Xh (%s)\n", get_long (address + 12), IDAUtils::DemangleTIName (cloName, buffer, sizeof (buffer)));
-    msg ("    pClassDescriptor:  %08.8Xh\n", get_long (address + 16));
 
     IDAUtils::DwordCmt (address, "signature");
     IDAUtils::DwordCmt (address + 4, "offset");
@@ -42,8 +28,7 @@ CompleteObjectLocator::parse (
     IDAUtils::OffCmt (address + 12, "pTypeDescriptor");
     IDAUtils::OffCmt (address + 16, "pClassDescriptor");
 
-    //
-    // Parse_CHD(get_long (address + 16));
+    CRTTIClassHierarchyDescriptor::parse (get_long (address + 16));
 }
 
 bool

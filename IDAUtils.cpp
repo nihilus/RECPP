@@ -3,28 +3,6 @@
 #include "frame.hpp"
 #include "struct.hpp"
 
-
-void
-asprintf (char *buffer, char *format, ...)
-{	
-	if (!format) {
-        return;
-    }
-
-	va_list args; 
-	va_start (args,format); 
-	int size = _vscprintf (format, args); 
-	
-	if (size > 0) {
-		size++;
-        _vsnprintf (buffer, size, format, args);
-	}
-
-	va_end (args);
-}
-
-
-
 int
 str_n_pos (char *str, const char *search, int len_str)
 {
@@ -312,19 +290,19 @@ IDAUtils::doAddrList (
 
     if (name != NULL && id != -1)
     {
-        msg ("refcount:%d\n", IDAUtils::GetArraySize (id));
         if (IDAUtils::GetArraySize (id) != 2) {
             return;
         }
         for ( idx = IDAUtils::GetFirstIndex (AR_LONG, id); idx != -1; idx = IDAUtils::GetNextIndex (AR_LONG, id, idx) )
         {
-            val = IDAUtils::GetArrayElement(AR_LONG, id, idx);
+            val = IDAUtils::GetArrayElementA (id, idx);
             
             if (IDAUtils::Byte (val) == 0xE9) {
                 val = IDAUtils::getRelJmpTarget(val);
             }
 
-            if ((strncmp (IDAUtils::Name (val), "??1", 3) == 0)) {
+            char buffer[2048];
+            if ((strncmp (IDAUtils::Name (val, buffer, sizeof (buffer)), "??1", 3) == 0)) {
                 dtr = val;
             }
             else {
@@ -334,9 +312,8 @@ IDAUtils::doAddrList (
     }
 
     if (ctr != 0 && dtr != 0) {
-        msg ("  constructor at %a\n", ctr);
         char buffer[2048] = {0};
-        IDAUtils::MakeName(ctr, IDAUtils::MakeSpecialName (name, SN_constructor, 0, buffer));
+        IDAUtils::MakeName(ctr, IDAUtils::MakeSpecialName (name, SN_constructor, 0, buffer, sizeof (buffer)));
     }
 
     IDAUtils::DeleteArray (IDAUtils::GetArrayId ("AddrList"));
@@ -441,7 +418,8 @@ IDAUtils::MakeSpecialName (
     char *name, 
     uint32 type, 
     uint32 adj,
-    char *buffer
+    char *buffer,
+    size_t bufferSize
 ) {
     char *basename;
 
@@ -454,12 +432,13 @@ IDAUtils::MakeSpecialName (
         case SN_constructor: {
             //??0A@@QAE@XZ = public: __thiscall A::A(void)
             if (adj == 0) { 
-                asprintf (buffer, "??0%sQAE@XZ", basename);
+                sprintf_s (buffer, bufferSize, "??0%sQAE@XZ", basename);
                 return buffer;
             }
             else {
                 char buffer2[2048] = {0};
-                asprintf (buffer, "??0%sW%sAE@XZ", basename, IDAUtils::MangleNumber (adj, buffer2));
+                char *mangleNumber = IDAUtils::MangleNumber (adj, buffer2, sizeof (buffer2));
+                sprintf_s (buffer, bufferSize, "??0%sW%sAE@XZ", basename, mangleNumber);
                 return buffer;
             }
         } break;
@@ -467,12 +446,13 @@ IDAUtils::MakeSpecialName (
         case SN_destructor: {
             //??1A@@QAE@XZ = "public: __thiscall A::~A(void)"
             if (adj == 0) { 
-                asprintf (buffer, "??1%sQAE@XZ", basename);
+                sprintf_s (buffer, bufferSize, "??1%sQAE@XZ", basename);
                 return buffer;
             }
             else {
                 char buffer2[2048] = {0};
-                asprintf (buffer, "??1%sW%sAE@XZ", basename, IDAUtils::MangleNumber (adj, buffer2));
+                char *mangleNumber = IDAUtils::MangleNumber (adj, buffer2, sizeof (buffer2));
+                sprintf_s (buffer, bufferSize, "??1%sW%sAE@XZ", basename, mangleNumber);
                 return buffer;
             }
         } break;
@@ -480,12 +460,13 @@ IDAUtils::MakeSpecialName (
         case SN_vdestructor: {
             //??1A@@UAE@XZ = public: virtual __thiscall A::~A(void)
             if (adj == 0) { 
-                asprintf (buffer, "??1%sUAE@XZ", basename);
+                sprintf_s (buffer, bufferSize, "??1%sUAE@XZ", basename);
                 return buffer;
             }
             else {
                 char buffer2[2048] = {0};
-                asprintf (buffer, "??1%sW%sAE@XZ", basename, IDAUtils::MangleNumber (adj, buffer2));
+                char *mangleNumber = IDAUtils::MangleNumber (adj, buffer2, sizeof (buffer2));
+                sprintf_s (buffer, bufferSize, "??1%sW%sAE@XZ", basename, mangleNumber);
                 return buffer;
             }
         } break;
@@ -493,12 +474,13 @@ IDAUtils::MakeSpecialName (
         case SN_scalardtr: {
             //??_GA@@UAEPAXI@Z = public: virtual void * __thiscall A::`scalar deleting destructor'(unsigned int)
             if (adj == 0) { 
-                asprintf (buffer, "??_G%sUAEPAXI@Z", basename);
+                sprintf_s (buffer, bufferSize, "??_G%sUAEPAXI@Z", basename);
                 return buffer;
             }
             else {
                 char buffer2[2048] = {0};
-                asprintf (buffer, "??_G%sW%sAEPAXI@Z", basename, IDAUtils::MangleNumber (adj, buffer2));
+                char *mangleNumber = IDAUtils::MangleNumber (adj, buffer2, sizeof (buffer2));
+                sprintf_s (buffer, bufferSize, "??_G%sW%sAEPAXI@Z", basename, mangleNumber);
                 return buffer;
             }
         } break;
@@ -507,12 +489,13 @@ IDAUtils::MakeSpecialName (
             //.?AUA@@ = typeid(struct A)
             //??_EA@@UAEPAXI@Z = public: virtual void * __thiscall A::`vector deleting destructor'(unsigned int)
             if (adj == 0) { 
-                asprintf (buffer, "??_E%sQAEPAXI@Z", basename);
+                sprintf_s (buffer, bufferSize, "??_E%sQAEPAXI@Z", basename);
                 return buffer;
             }
             else {
                 char buffer2[2048] = {0};
-                asprintf (buffer, "??_E%sW%sAEPAXI@Z", basename, IDAUtils::MangleNumber (adj, buffer2));
+                char *mangleNumber = IDAUtils::MangleNumber (adj, buffer2, sizeof (buffer2));
+                sprintf_s (buffer, bufferSize, "??_E%sW%sAEPAXI@Z", basename, mangleNumber);
                 return buffer;
             }
         } break;
@@ -630,23 +613,14 @@ IDAUtils::GetNextIndex (
 }
 
 ea_t
-IDAUtils::GetArrayElement (
-    long tag,
+IDAUtils::GetArrayElementA (
     int id,
     nodeidx_t idx
 ) {
     char buf[2048] = {0};
     netnode n(id);
 
-    if (tag == 'A') {
-        return n.altval(idx);
-    }
-
-    else if (tag == 'S') {
-        n.supstr(idx, buf, sizeof(buf));
-    }
-
-    return (ea_t) qstrdup(buf);
+    return n.altval(idx);
 }
 
 bool
@@ -664,7 +638,7 @@ IDAUtils::AddAddr (
 
     for (idx = IDAUtils::GetFirstIndex (AR_LONG, id); idx != -1; idx = IDAUtils::GetNextIndex (AR_LONG, id, idx))
     {
-        val = IDAUtils::GetArrayElement (AR_LONG, id, idx);
+        val = IDAUtils::GetArrayElementA (id, idx);
         if (val == address) {
             return true;
         }
@@ -672,7 +646,7 @@ IDAUtils::AddAddr (
         if (val > address)    // InSort
         {
             for (; idx != -1; idx = IDAUtils::GetNextIndex (AR_LONG, id, idx)) {
-                val = IDAUtils::GetArrayElement (AR_LONG, id, idx);
+                val = IDAUtils::GetArrayElementA (id, idx);
                 IDAUtils::SetArrayLong (id, idx, address);
                 address = val;
             }
@@ -685,15 +659,15 @@ IDAUtils::AddAddr (
 
 char *
 IDAUtils::Name (
-    ea_t address
+    ea_t address,
+    char *buffer,
+    size_t bufferSize
 ) {
-    char buf[2048] = {0};
-    size_t bufsize = sizeof (buf);
-    char *result = get_name (BADADDR, address, buf, bufsize);
+    char *result = get_name (BADADDR, address, buffer, bufferSize);
     if (!result) {
-        return strdup ("");
+        buffer[0] = '\0';
     }
-    return result;
+    return buffer;
 }
 
 ea_t
@@ -768,7 +742,7 @@ IDAUtils::DemangleTIName (
 
     char buffer[2048] = {0};
 
-    asprintf (buffer, "??_R0%s@8", mangledName);
+    sprintf_s (buffer, sizeof (buffer), "??_R0%s@8", mangledName);
     IDAUtils::Demangle (buffer, 8, result, resultSize);
 
     char *end = strstr (result, "`RTTI Type Descriptor'");
@@ -851,13 +825,12 @@ IDAUtils::OffCmt (
     return IDAUtils::MakeComm (address, comment);
 }
 
-
 bool
 IDAUtils::MakeName (
     ea_t address,
     char *name
 ) {
-    return set_name (address, name, SN_CHECK);
+    return do_name_anyway (address, name, 0);
 }
 
 bool
@@ -936,7 +909,8 @@ IDAUtils::MakeStr (
 char *
 IDAUtils::MangleNumber (
     int number,
-    char *buffer
+    char *buffer,
+    size_t bufferSize
 ) {
     //
     // 0 = A@
@@ -957,17 +931,17 @@ IDAUtils::MangleNumber (
     }
 
     else if (number <= 10) {
-        asprintf (buffer, "%s%d", sign ? "?" : "", number - 1);
+        sprintf_s (buffer, bufferSize, "%s%d", sign ? "?" : "", number - 1);
         return buffer;
     }
 
     else {
         while (number > 0)
         {
-            asprintf (buffer, "%c%s", 'A' + (number % 16), buffer);
+            sprintf_s (buffer, bufferSize, "%c%s", 'A' + (number % 16), buffer);
             number = number / 16;
         }
-        asprintf (buffer, "%s%s@", sign ? "?" : "", buffer);
+        sprintf_s (buffer, bufferSize, "%s%s@", sign ? "?" : "", buffer);
         return buffer;
     }
 }

@@ -26,12 +26,12 @@ struct _RTTIClassHierarchyDescriptor {
 
 class CRTTIClassHierarchyDescriptor {
 public:
-    static char *
+    static void
     parse (
         ea_t address
     );
 
-    static char *
+    static void
     parse2 (
         ea_t address
     );

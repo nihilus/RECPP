@@ -54,6 +54,12 @@ class IDAUtils {
         char *cmt
     );
 
+    bool
+    IDAUtils::MakeNameForce (
+        ea_t address,
+        char *name
+    );
+
     /*
     * @brief : Make dword, undefine as needed
     * @param address : The start address
@@ -218,7 +224,8 @@ class IDAUtils {
     static char *
     MangleNumber (
         int number,
-        char *buffer
+        char *buffer,
+        size_t bufferSize
     );
     
     /*
@@ -291,7 +298,9 @@ class IDAUtils {
     */
     static char *
     IDAUtils::Name (
-        ea_t address
+        ea_t address,
+        char *buffer,
+        size_t bufferSize
     );
 
     /*
@@ -344,8 +353,7 @@ class IDAUtils {
     * @brief : 
     */
     static ea_t
-    IDAUtils::GetArrayElement (
-        long tag,
+    IDAUtils::GetArrayElementA (
         int id,
         nodeidx_t idx
     );
@@ -417,7 +425,8 @@ class IDAUtils {
         char *name, 
         uint32 type, 
         uint32 adj,
-        char *buffer
+        char *buffer,
+        size_t bufferSize
     );
     
     /*
@@ -559,9 +568,6 @@ class IDAUtils {
         char *name
     );
 };
-
-void
-asprintf (char *buffer, char *format, ...);
 
 int
 str_pos (const char *str, const char *search);

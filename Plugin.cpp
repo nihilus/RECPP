@@ -38,8 +38,6 @@ user_menu_scan_vftable (
         rMax = cMax;
     }
 
-    msg (".rdata: %08.8Xh - %08.8Xh, .text %08.8Xh - %08.8Xh\n", rMin, rMax, cMin, cMax);
-
     ea_t curAddress = rMin;
     ea_t x;
     
@@ -56,6 +54,7 @@ user_menu_scan_vftable (
     }
 
     msg ("Finished !\n");
+    msg ("Vtable count = %d", vtableCount);
 
     return true;
 }
@@ -71,6 +70,9 @@ ui_callback (
     switch (notification_code)
     {
         case view_popup:
+            // clear the current user-defined menu (may clear items added by other plugins, so not recommended)
+            set_custom_viewer_popup_menu(view, NULL);
+
             add_custom_viewer_popup_item(view, "Scan vftables", "Ctrl-5", user_menu_scan_vftable, NULL);
         break;
     }

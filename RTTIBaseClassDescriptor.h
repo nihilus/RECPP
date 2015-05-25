@@ -35,8 +35,9 @@ class CRTTIBaseClassDescriptor {
 
 public:
     static char *
-    parse (
-        ea_t address
+    CRTTIBaseClassDescriptor::parse (
+        ea_t address,
+        char *buffer3,
+        size_t bufferSize
     );
-
 };
