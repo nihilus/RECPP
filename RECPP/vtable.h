@@ -11,6 +11,8 @@
 
 // ---------- Includes ------------
 #include "RECPP.h"
+#include "DecMap.h"
+#include <frame.hpp>
 
 // ---------- Defines -------------
 extern int vtableCount;
@@ -90,11 +92,12 @@ checkSDD (
 
 /*
 * @brief : Check if there's a vtable at address, and dump into to output
+* @param decMap : An allocated DecMap
 * @param address : The vtable address. Can point to any address.
-* @param output : An opened FILE
 * @return position after the end of vtable
 */
 ea_t 
 do_vtable (
+    DecMap *decMap,
     ea_t address
 );

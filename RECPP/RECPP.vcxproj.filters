@@ -36,6 +36,12 @@
     <ClCompile Include="vtable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="callgraph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DecMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CompleteObjectLocator.h">
@@ -57,6 +63,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vtable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="callgraph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DecMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

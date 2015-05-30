@@ -75,7 +75,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="callgraph.cpp" />
     <ClCompile Include="CompleteObjectLocator.cpp" />
+    <ClCompile Include="DecMap.cpp" />
     <ClCompile Include="IDAUtils.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="RTTIBaseClassDescriptor.cpp" />
@@ -84,7 +86,9 @@
     <ClCompile Include="TypeDescriptor.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="callgraph.h" />
     <ClInclude Include="CompleteObjectLocator.h" />
+    <ClInclude Include="DecMap.h" />
     <ClInclude Include="RECPP.h" />
     <ClInclude Include="IDAUtils.h" />
     <ClInclude Include="RTTIBaseClassDescriptor.h" />

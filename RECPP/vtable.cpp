@@ -12,6 +12,8 @@
 #include "RTTIBaseClassDescriptor.h"
 #include "RTTIClassHierarchyDescriptor.h"
 #include "CompleteObjectLocator.h"
+#include "callgraph.h"
+#include "DecMap.h"
 
 int vtableCount = 0;
 
@@ -161,41 +163,6 @@ get_vtable_class_name (
     return buffer;
 }
 
-char *
-classname_filter (
-    char *className,
-    char **forClass
-) {
-    if (forClass != NULL) {
-        *forClass = NULL;
-    }
-
-    // Remove const_ prefix
-    if ((strncmp (className, "const ", strlen ("const ")) == 0)
-    ||  (strncmp (className, "const_", strlen ("const_")) == 0)
-    ) {
-        className += strlen ("const ");
-    }
-
-    char *forPos = strstr (className, "{for `");
-    char *vftablePos = strstr (className, "`vftable'");
-    if (forPos) {
-        forPos += strlen ("{for `");
-        char *endSubClass = strstr (forPos, "'");
-        if (endSubClass) {
-            *endSubClass = '\0';
-            if (forClass != NULL) {
-                *forClass = forPos;
-            }
-        }
-    }
-    if (vftablePos) {
-        *vftablePos = '\0';
-    }
-
-    return className;
-}
-
 void
 create_struct_from_vtable (
     ea_t vtableAddress,
@@ -207,12 +174,12 @@ create_struct_from_vtable (
     }
 
     char structName [4096] = {0};
-    sprintf_s (structName, sizeof (structName), "%svtable", className);
+    sprintf_s (structName, sizeof (structName), "%s_vtable", className);
 
     tid_t struct_id = IDAUtils::GetStrucIdByName (structName);
 
     if (struct_id != -1) {
-        msg ("Structre <%s> already exists.", structName);
+        msg ("Structre <%s> already exists.\n", structName);
         return;
     }
 
@@ -248,14 +215,101 @@ create_struct_from_vtable (
 
 void
 exploreMethod (
+    DecMap *decMap,
     ea_t address,
     char *methodName
 ) {
+    if (!address) {
+        return;
+    }
 
+    func_t *f = get_func (address);
+    if (!f) {
+        // msg ("Cannot explore method <%s> at [%x]\n", methodName, address);
+        return;
+    }
+
+    static funcs_walk_options_t fg_opts = {
+        FWO_VERSION,       // version
+        FWO_RECURSE_UNLIM, // flags
+        0                  // max recursion
+    };
+
+    graph_info_t *gi = graph_info_t::create (decMap, address);
+    if (!gi) {
+        msg ("GI is NULL.\n");
+        return;
+    }
+
+    callgraph_t *fg = &gi->fg;
+
+    // Start analysing here
+    char methodNameDem [4096] = {0};
+    IDAUtils::Demangle (methodName, 0, methodNameDem, sizeof (methodNameDem));
+    if (strlen (methodNameDem) != 0) {
+        methodName = methodNameDem;
+    }
+
+    msg ("[%x] Analyzing %s callgraph...\n", address, methodName);
+    fg->walk_func (f, &fg_opts, 2);
+    
+    callgraph_t::edge_iterator end = fg->end_edges();
+    for (callgraph_t::edge_iterator it = fg->begin_edges(); it != end; it++) {
+        func_t *parent = fg->get_function (it->id1);
+        func_t *child  = fg->get_function (it->id2);
+        if (!parent || !child) {
+            continue;
+        }
+    }
+}
+
+char *
+classname_filter (
+    char *className,
+    char **forClass
+) {
+    if (forClass != NULL) {
+        *forClass = NULL;
+    }
+
+    // Remove const_ prefix
+    if ((strncmp (className, "const ", strlen ("const ")) == 0)
+    ||  (strncmp (className, "const_", strlen ("const_")) == 0)
+    ) {
+        className += strlen ("const ");
+    }
+
+    char *forPos = strstr (className, "{for `");
+    char *vftablePos = strstr (className, "`vftable'");
+    if (forPos) {
+        forPos += strlen ("{for `");
+        char *endSubClass = strstr (forPos, "'");
+        if (endSubClass) {
+            *endSubClass = '\0';
+            if (forClass != NULL) {
+                *forClass = forPos;
+            }
+        }
+    }
+    if (vftablePos) {
+        *vftablePos = '\0';
+    }
+
+    // Remove ending ::
+    size_t classNameLen = strlen (className);
+    if (classNameLen >= 2) {
+        char *endingColons = &className[classNameLen - 2];
+        if (strncmp (endingColons, "::", 2) == 0) {
+            *endingColons = '\0';
+        }
+    }
+
+    return className;
 }
 
 void
 parse_vtable (
+    DecMap *decMap,
     ea_t address,
     size_t methodsCount
 ) {
@@ -288,6 +342,7 @@ parse_vtable (
 
             className = classname_filter (className, NULL);
 
+            msg ("=== Analyzing Class '%s' ===\n", className);
             // Rename the methods in the vftable
             for (size_t methodIdx = 0; methodIdx < methodsCount; methodIdx++) {
                 char methodName[4096];
@@ -295,11 +350,11 @@ parse_vtable (
 
                 // Rename them only if they aren't named yet
                 if (strncmp (methodName, "sub_", 4) == 0) {
-                    sprintf_s (methodName, sizeof (methodName), "%s_virt%d", className, methodIdx + 1);
+                    sprintf_s (methodName, sizeof (methodName), "%s::virt%d", className, methodIdx + 1);
                     IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
                 }
 
-                exploreMethod (get_long (address + (methodIdx * 4)), methodName);
+                exploreMethod (decMap, get_long (address + (methodIdx * 4)), methodName);
             }
 
             sprintf_s (buffer, sizeof (buffer), "??_R4%s6B@", &typeName[4]);
@@ -336,10 +391,10 @@ parse_vtable (
                 // Rename them only if they aren't named yet
                 if (strncmp (methodName, "sub_", 4) == 0) {
                     if (forClass) {
-                        sprintf_s (methodName, sizeof (methodName), "%svirt%d_for_%s", className, methodIdx + 1, forClass);
+                        sprintf_s (methodName, sizeof (methodName), "%s::virt%d_for_%s", className, methodIdx + 1, forClass);
                     }
                     else {
-                        sprintf_s (methodName, sizeof (methodName), "%svirt%d", className, methodIdx + 1);
+                        sprintf_s (methodName, sizeof (methodName), "%s::virt%d", className, methodIdx + 1);
                     }
 
                     IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
@@ -654,6 +709,7 @@ checkSDD (
 */
 ea_t 
 do_vtable (
+    DecMap *decMap,
     ea_t address
 ) {
     size_t vtableMethodsCount = get_vtable_methods_count (address);
@@ -676,7 +732,7 @@ do_vtable (
     endTable = get_long (address - 4);
 
     if (CompleteObjectLocator::isValid (endTable)) {
-        parse_vtable (address, vtableMethodsCount);
+        parse_vtable (decMap, address, vtableMethodsCount);
         if (name == NULL) {
             name = get_vtable_class_name_2 (endTable, buffer, sizeof (buffer));
         }
