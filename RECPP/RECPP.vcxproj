@@ -5,6 +5,10 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_v2|Win32">
+      <Configuration>Release_v2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -17,6 +21,12 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_v2|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
@@ -35,11 +45,18 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_v2|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <TargetExt>.plw</TargetExt>
+    <OutDir>D:\Hacking\IDA6.6\plugins</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_v2|Win32'">
     <TargetExt>.plw</TargetExt>
     <OutDir>D:\Hacking\IDA6.6\plugins</OutDir>
   </PropertyGroup>
@@ -51,6 +68,25 @@
       <AdditionalIncludeDirectories>D:\Hacking\IDA6.6\idaSDK\include;D:\Hacking\IDA6.6\plugins\hexrays_sdk\include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>__NT__;__IDP__;WIN32;_DEBUG;_CONSOLE</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ida.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Hacking\IDA6.6\idaSDK\lib\x86_win_vc_32</AdditionalLibraryDirectories>
+      <SubSystem>Console</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_v2|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <SDLCheck>false</SDLCheck>
+      <AdditionalIncludeDirectories>D:\Hacking\IDA6.6\idaSDK\include;D:\Hacking\IDA6.6\plugins\hexrays_sdk\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>__NT__;__IDP__;WIN32;_DEBUG;_CONSOLE</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <BasicRuntimeChecks />
+      <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -75,26 +111,34 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="callgraph.cpp" />
+    <ClCompile Include="CallGraph.cpp" />
     <ClCompile Include="CompleteObjectLocator.cpp" />
     <ClCompile Include="DecMap.cpp" />
+    <ClCompile Include="GraphInfo.cpp" />
     <ClCompile Include="IDAUtils.cpp" />
+    <ClCompile Include="Method.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="RTTIBaseClassDescriptor.cpp" />
     <ClCompile Include="RTTIClassHierarchyDescriptor.cpp" />
-    <ClCompile Include="vtable.cpp" />
     <ClCompile Include="TypeDescriptor.cpp" />
+    <ClCompile Include="VirtualMethod.cpp" />
+    <ClCompile Include="Vtable.cpp" />
+    <ClCompile Include="VtableScanner.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="callgraph.h" />
+    <ClInclude Include="CallGraph.h" />
     <ClInclude Include="CompleteObjectLocator.h" />
     <ClInclude Include="DecMap.h" />
-    <ClInclude Include="RECPP.h" />
+    <ClInclude Include="GraphInfo.h" />
     <ClInclude Include="IDAUtils.h" />
+    <ClInclude Include="Method.h" />
+    <ClInclude Include="RECPP.h" />
     <ClInclude Include="RTTIBaseClassDescriptor.h" />
     <ClInclude Include="RTTIClassHierarchyDescriptor.h" />
     <ClInclude Include="TypeDescriptor.h" />
-    <ClInclude Include="vtable.h" />
+    <ClInclude Include="VirtualMethod.h" />
+    <ClInclude Include="Vtable.h" />
+    <ClInclude Include="VtableScanner.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

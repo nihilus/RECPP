@@ -13,29 +13,50 @@
 
 // ---------- Includes ------------
 #include "RECPP.h"
-#include "callgraph.h"
+#include "CallGraph.h"
 
 // ---------- Defines -------------
 
 
 // ------ Class definition --------
 
-class graph_info_t;
-
-class DecMap {
+class GraphInfo
+{
+// Actual context variables
 public:
-    DecMap ();
-    ~DecMap ();
+    CallGraph fg; // associated call graph maker
+    ea_t func_ea; // function ea in question
+    func_t *function; // Function pointer
 
-    int node_count;
+// Instance management
+private:
+
+    typedef qlist<GraphInfo *> graphinfo_list_t;
+    typedef graphinfo_list_t::iterator iterator;
+    static graphinfo_list_t instances;
+
+    static bool
+    find (
+        ea_t func_ea, 
+        iterator *out
+    );
+
+    GraphInfo (
+        ea_t address
+    );
+
+public:
+    ~GraphInfo (
+        void
+    );
+
+    static GraphInfo *
+    create (
+        ea_t func_ea
+    );
     
-    // Map address -> cfunc_t
-    typedef std::map<ea_t, cfunc_t *> ea_cf_map_t;
-    typedef std::map<ea_t, graph_info_t *> ea_gi_map_t;
-    ea_cf_map_t ea2cf;
-    ea_gi_map_t ea2gi;
-
-    void DecMap::decompile_function (graph_info_t *gi, ea_t func_ea);
-    void DecMap::process (cfunc_t *cfunc);
+    static GraphInfo *
+    find (
+        ea_t func_ea
+    );
 };
-

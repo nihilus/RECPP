@@ -10,32 +10,31 @@
 
 #pragma once
 
-
 // ---------- Includes ------------
 #include "RECPP.h"
-#include "callgraph.h"
+#include "GraphInfo.h"
 
 // ---------- Defines -------------
 
 
 // ------ Class definition --------
+class Method 
+{
+    public:
+        Method (char *className, ea_t functionAddress, bool makeName);
+        virtual ~Method ();
+        
+        virtual void
+        Method::explore (
+            void
+        );
+        
+    protected:
+        GraphInfo *graphInfo;
+        std::string methodName;
+        func_t *function;
+        ea_t methodAddress;
+        ea_t methodStart;
 
-class graph_info_t;
-
-class DecMap {
-public:
-    DecMap ();
-    ~DecMap ();
-
-    int node_count;
-    
-    // Map address -> cfunc_t
-    typedef std::map<ea_t, cfunc_t *> ea_cf_map_t;
-    typedef std::map<ea_t, graph_info_t *> ea_gi_map_t;
-    ea_cf_map_t ea2cf;
-    ea_gi_map_t ea2gi;
-
-    void DecMap::decompile_function (graph_info_t *gi, ea_t func_ea);
-    void DecMap::process (cfunc_t *cfunc);
+    private:
 };
-

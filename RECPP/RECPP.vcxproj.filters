@@ -15,28 +15,40 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Plugin.cpp">
+    <ClCompile Include="VirtualMethod.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CompleteObjectLocator.cpp">
+    <ClCompile Include="Method.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TypeDescriptor.cpp">
+    <ClCompile Include="GraphInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RTTIClassHierarchyDescriptor.cpp">
+    <ClCompile Include="CallGraph.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RTTIBaseClassDescriptor.cpp">
+    <ClCompile Include="Vtable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="IDAUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vtable.cpp">
+    <ClCompile Include="VtableScanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="callgraph.cpp">
+    <ClCompile Include="CompleteObjectLocator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RTTIBaseClassDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RTTIClassHierarchyDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeDescriptor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Plugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DecMap.cpp">
@@ -44,28 +56,40 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CompleteObjectLocator.h">
+    <ClInclude Include="RECPP.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RTTIClassHierarchyDescriptor.h">
+    <ClInclude Include="VirtualMethod.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RTTIBaseClassDescriptor.h">
+    <ClInclude Include="Method.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CallGraph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Vtable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IDAUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="VtableScanner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CompleteObjectLocator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RTTIBaseClassDescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RTTIClassHierarchyDescriptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TypeDescriptor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RECPP.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vtable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="callgraph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DecMap.h">

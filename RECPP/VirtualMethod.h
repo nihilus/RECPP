@@ -10,9 +10,26 @@
 
 #pragma once
 
-#pragma warning(disable : 4996)
+#include "RECPP.h"
+#include "Method.h"
 
-#define BYTES_SOURCE
-#include <idp.hpp>
-#include <hexrays.hpp>
-#include "IDAUtils.h"
+class VirtualMethod : public Method 
+{
+public:
+    VirtualMethod::VirtualMethod (
+        char *methodName, 
+        ea_t functionAddress, 
+        ea_t vftableAddress,
+        char *forClass
+    );
+
+    ~VirtualMethod ();
+
+    static char *
+    VirtualMethod::getMethodName (
+        char *className
+    );
+
+private:
+    ea_t vftableAddress;
+};

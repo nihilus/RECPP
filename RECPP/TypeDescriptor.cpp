@@ -23,7 +23,7 @@ CTypeDescriptor::parse (
 
     char buffer2[2048] = {0};
 
-    char *a = IDAUtils::getAsciizStr (address + 8, buffer, sizeof (buffer));
+    char *a = IDAUtils::GetAsciizStr (address + 8, buffer, sizeof (buffer));
 
     IDAUtils::OffCmt (address, "pVFTable");
     IDAUtils::OffCmt (address + 4, "spare");

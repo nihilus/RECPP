@@ -11,6 +11,8 @@
 
 // ---------- Includes ------------
 #include "RECPP.h"
+#include <iostream>
+#include <cstdarg>
 
 // ---------- Defines -------------
 #ifndef INF_STRTYPE
@@ -42,13 +44,18 @@
 class IDAUtils {
     public:
 
+    static std::string 
+    string_sprintf (
+        const char* format, ...
+    );
+
     /*
     * @brief : Get a string terminated with a zero at \address
     * @param address : The address of the string
     * @return The string, or NULL if an error occured
     */
     static char *
-    getAsciizStr (
+    GetAsciizStr (
         ea_t address,
         char *buffer,
         size_t bufferSize

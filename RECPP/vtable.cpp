@@ -8,266 +8,44 @@
 * @license : <license placeholder>
 */
 
-#include "vtable.h"
-#include "RTTIBaseClassDescriptor.h"
-#include "RTTIClassHierarchyDescriptor.h"
+// ---------- Includes ------------
+#include "Vtable.h"
+#include "IDAUtils.h"
+#include "VirtualMethod.h"
 #include "CompleteObjectLocator.h"
-#include "callgraph.h"
-#include "DecMap.h"
 
-int vtableCount = 0;
+Vtable::Vtable (
+    ea_t address, 
+    char *className, 
+    size_t virtualMethodsCount
+)  {
+    char *forClass;
+    filterClassName (&className, &forClass);
 
-/*
-* @brief : Get a vtable size
-* @param curAddress : The vtable address. Can point to any address.
-* @return 0 if no vtable is at \address, or the number of methods of the vtable if detected
-*/
-size_t 
-get_vtable_methods_count (
-    ea_t curAddress
-) {
-    ea_t startTable = BADADDR;
-    ea_t curEntry = 0;
-
-    // Iterate until we find a result
-    for (; ; curAddress += 4) 
-    {
-        flags_t flags = IDAUtils::GetFlags (curAddress);
-
-        // First iteration
-        if (startTable == BADADDR) {
-            startTable = curAddress;
-            if (!(hasRef (flags) && (has_name (flags) || (flags & FF_LABL)))) {
-                // Start of vtable should have a xref and a name (auto or manual)
-                return 0;
-            }
-        }
-        else if (hasRef (flags)) {
-            // Might mean start of next vtable
-            break;
-        }
-        
-        if (!hasValue (flags) || !isData (flags)) {
-            break;
-        }
-        
-        if ((curEntry = get_long (curAddress))) {
-            flags = IDAUtils::GetFlags (curEntry);
-            
-            if (!hasValue (flags) || !isCode (flags) || get_long (curEntry) == 0) {
-                break;
-            }
-        }
-    }
-
+    this->address = address;
+    this->className = strdup (className);
+    this->virtualMethodsCount = virtualMethodsCount;
     
-    if (startTable != BADADDR) {
-        return (curAddress - startTable) / 4;
-    }
-    
-    else {
-        // No vtable at this EA
-        return 0;
+    // msg ("=== Analyzing Vtable for '%s' ===\n", className);
+
+    for (size_t methodIndex = 0; methodIndex < virtualMethodsCount; methodIndex++) {
+        VirtualMethod *m = new VirtualMethod (className, address, methodIndex, forClass);
+        m->explore ();
+        this->virtualMethods.push_back (m);
     }
 }
 
-
-/*
- * @brief : Check if get_long (vtable-4) points to typeinfo record and extract the type name from it
- * @return The type name, or NULL if an error occured
- */
-char *
-get_type_name (
-    ea_t vtable,
-    char *buffer,
-    size_t bufferSize
-) {
-    if (vtable == BADADDR) {
-        return NULL;
-    }
-
-    ea_t x = get_long (vtable - 4);
-
-    if (!x || (x == BADADDR)) {
-        return NULL;
-    }
-
-    x = get_long (x + 12);
-
-    if (!x || (x == BADADDR)) {
-        return NULL;
-    }
-
-    x = x + 8;
-
-    char curByte;
-    size_t bufferPos = 0;
-
-    while (curByte = get_byte (x)) {
-        buffer [bufferPos++] = curByte;
-        x++;
-        if (bufferPos > bufferSize) {
-            return NULL;
-        }
-    }
-
-    return buffer;
-}
-
-
-
-// Get class name for this vtable instance
-char * 
-get_vtable_class_name (
-    ea_t address,
-    char *buffer,
-    size_t bufferSize
-) {
-    ea_t offset = get_long (address + 4);
-    address = get_long (address + 16); // Class Hierarchy Descriptor
-
-    ea_t a = get_long (address + 12); // pBaseClassArray
-    size_t numBaseClasses = get_long (address + 8);  //numBaseClasses
-    size_t i = 0;
-    buffer[0] = '\0';
-    
-    while (i < numBaseClasses) 
-    {
-        ea_t p = get_long (a);
-        // BaseClass[%02d]:  %08.8Xh\n", i, p
-        if (get_long (p + 8) == offset) {
-            // Found it
-            return IDAUtils::getAsciizStr(get_long (p) + 8, buffer, bufferSize);
-        }
-
-        i++;
-        a += 4;
-    }
-
-    // Didn't find matching one, let's get the first vbase
-    i = 0;
-    a = get_long (address + 12);
-
-    while (i < numBaseClasses) 
-    {
-        ea_t p = get_long (a);
-        // BaseClass[%02d]:  %08.8Xh\n", i, p
-        if (get_long (p + 12) != -1)  {
-            return IDAUtils::getAsciizStr(get_long (p) + 8, buffer, bufferSize);
-        }
-
-        i++;
-        a += 4;
-    }
-
-    return buffer;
+Vtable::~Vtable () 
+{
 }
 
 void
-create_struct_from_vtable (
-    ea_t vtableAddress,
-    size_t methodsCount,
-    char *className
-) {
-    if (strlen (className) == 0) {
-        return;
-    }
-
-    char structName [4096] = {0};
-    sprintf_s (structName, sizeof (structName), "%s_vtable", className);
-
-    tid_t struct_id = IDAUtils::GetStrucIdByName (structName);
-
-    if (struct_id != -1) {
-        msg ("Structre <%s> already exists.\n", structName);
-        return;
-    }
-
-    struct_id = IDAUtils::AddStrucEx (-1, structName, 0);
-
-    if (struct_id == -1) {
-        msg ("Could not create the vtable structure <%s> !\n", structName);
-        return;
-    }
-
-    for (size_t i = 0 ; i < methodsCount ; i++)
-    {
-        char methodName[4096] = {0};
-        ea_t methodAddress = get_long (vtableAddress + i * 4);
-        if (!methodAddress) {
-            continue;
-        }
-
-        IDAUtils::Name (methodAddress, methodName, sizeof (methodName));
-
-        if (strlen (methodName) == 0) {
-            continue;
-        }
-
-        IDAUtils::ForceMethodMember (struct_id, i * 4, methodName, sizeof (methodName));
-
-        /*char comment[4096] = {0};
-        sprintf_s (comment, sizeof (comment), "-> %08X, args: 0x%X", methodAddress, IDAUtils::GetFrameArgsSize (methodAddress));
-        IDAUtils::SetMemberComment (struct_id, i * 4, comment, 1);
-        */
-    }
-}
-
-void
-exploreMethod (
-    DecMap *decMap,
-    ea_t address,
-    char *methodName
-) {
-    if (!address) {
-        return;
-    }
-
-    func_t *f = get_func (address);
-    if (!f) {
-        // msg ("Cannot explore method <%s> at [%x]\n", methodName, address);
-        return;
-    }
-
-    static funcs_walk_options_t fg_opts = {
-        FWO_VERSION,       // version
-        FWO_RECURSE_UNLIM, // flags
-        0                  // max recursion
-    };
-
-    graph_info_t *gi = graph_info_t::create (decMap, address);
-    if (!gi) {
-        msg ("GI is NULL.\n");
-        return;
-    }
-
-    callgraph_t *fg = &gi->fg;
-
-    // Start analysing here
-    char methodNameDem [4096] = {0};
-    IDAUtils::Demangle (methodName, 0, methodNameDem, sizeof (methodNameDem));
-    if (strlen (methodNameDem) != 0) {
-        methodName = methodNameDem;
-    }
-
-    msg ("[%x] Analyzing %s callgraph...\n", address, methodName);
-    fg->walk_func (f, &fg_opts, 2);
-    
-    callgraph_t::edge_iterator end = fg->end_edges();
-    for (callgraph_t::edge_iterator it = fg->begin_edges(); it != end; it++) {
-        func_t *parent = fg->get_function (it->id1);
-        func_t *child  = fg->get_function (it->id2);
-        if (!parent || !child) {
-            continue;
-        }
-    }
-}
-
-char *
-classname_filter (
-    char *className,
+Vtable::filterClassName (
+    char **_className,
     char **forClass
 ) {
+    char *className = *_className;
+
     if (forClass != NULL) {
         *forClass = NULL;
     }
@@ -304,118 +82,85 @@ classname_filter (
         }
     }
 
-    return className;
-}
-
-void
-parse_vtable (
-    DecMap *decMap,
-    ea_t address,
-    size_t methodsCount
-) {
-    char typeName[4096] = {0};
-    get_type_name (address, typeName, sizeof (typeName));
-    char buffer[4096] = {0};
-
-    if (strncmp (typeName, ".?A", 3) == 0)
-    {
-        IDAUtils::Unknown (address - 4, 4);
-        IDAUtils::SoftOff (address - 4);
-        ea_t i = get_long (address - 4);  // COL
-        ea_t s2 = get_long (i + 4); // offset
-        i = get_long (i + 16); // CHD
-        i = get_long (i + 4);  // Attributes
-
-        char className_buf[4096] = {0};
-        char *className = className_buf;
-
-        if ((i & 3) == 0 && s2 == 0) {
-            // Single inheritance, so we don't need to worry about duplicate names (several vtables)
-            sprintf_s (buffer, sizeof (buffer), "??_7%s6B@", &typeName[4]);
-
-            // Set the VFTable name
-            IDAUtils::MakeName (address, buffer);
-            vtableCount++;
-            
-            // Get the demangled name
-            get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
-
-            className = classname_filter (className, NULL);
-
-            msg ("=== Analyzing Class '%s' ===\n", className);
-            // Rename the methods in the vftable
-            for (size_t methodIdx = 0; methodIdx < methodsCount; methodIdx++) {
-                char methodName[4096];
-                IDAUtils::Name (get_long (address + (methodIdx * 4)), methodName, sizeof (methodName));
-
-                // Rename them only if they aren't named yet
-                if (strncmp (methodName, "sub_", 4) == 0) {
-                    sprintf_s (methodName, sizeof (methodName), "%s::virt%d", className, methodIdx + 1);
-                    IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
-                }
-
-                exploreMethod (decMap, get_long (address + (methodIdx * 4)), methodName);
-            }
-
-            sprintf_s (buffer, sizeof (buffer), "??_R4%s6B@", &typeName[4]);
-            // Set the RTTI Complete Object Locator name
-            IDAUtils::MakeName (get_long (address - 4), buffer);
-        }
-
-        else {
-            // Multiple inheritance
-            char vtableClassName[4096] = {0};
-            get_vtable_class_name (get_long (address - 4), vtableClassName, sizeof (vtableClassName));
-            char vtableName[4096] = {0};
-            char COLName[4096] = {0};
-            sprintf_s (buffer, sizeof (buffer), "%s6B%s@", &typeName[4], &vtableClassName[4]);
-            sprintf_s (vtableName, sizeof (vtableName),  "??_7%s", buffer);
-            sprintf_s (COLName, sizeof (COLName), "??_R4%s", buffer);
-
-            // Set the VFTable name
-            IDAUtils::MakeName (address, vtableName);
-            vtableCount++;
-
-            // Get the demangled name
-            get_short_name (BADADDR, address, className_buf, sizeof (className_buf));
-            
-            // Filter the class name
-            char *forClass;
-            className = classname_filter (className, &forClass);
-            
-            // Rename the methods in the vftable
-            for (size_t methodIdx = 0; methodIdx < methodsCount; methodIdx++) {
-                char methodName[4096];
-                IDAUtils::Name (get_long (address + (methodIdx * 4)), methodName, sizeof (methodName));
-
-                // Rename them only if they aren't named yet
-                if (strncmp (methodName, "sub_", 4) == 0) {
-                    if (forClass) {
-                        sprintf_s (methodName, sizeof (methodName), "%s::virt%d_for_%s", className, methodIdx + 1, forClass);
-                    }
-                    else {
-                        sprintf_s (methodName, sizeof (methodName), "%s::virt%d", className, methodIdx + 1);
-                    }
-
-                    IDAUtils::MakeName (get_long (address + (methodIdx * 4)), methodName);
-                }
-            }
-            
-            // Set the RTTI Complete Object Locator name
-            IDAUtils::MakeName (get_long (address - 4), COLName);
-        }
-
-        create_struct_from_vtable (address, methodsCount, className);
+    // Remove forbidden characters
+    char *forbidden;
+    while (forbidden = strstr (className, "<")) {
+        *forbidden = '_';
     }
+    while (forbidden = strstr (className, ">")) {
+        *forbidden = '_';
+    }
+    while (forbidden = strstr (className, " ")) {
+        *forbidden = '_';
+    }
+    while (forbidden = strstr (className, ",")) {
+        *forbidden = '_';
+    }
+    while (forbidden = strstr (className, "*")) {
+        *forbidden = '_';
+    }
+    while (forbidden = strstr (className, "`")) {
+        *forbidden = '_';
+    }
+    while (forbidden = strstr (className, "'")) {
+        *forbidden = '_';
+    }
+    
+    *_className = className;
 }
 
+
+
+/*
+ * @brief : Check if get_long (vtable-4) points to typeinfo record and extract the type name from it
+ * @return The type name, or NULL if an error occured
+ */
 char *
-get_vtable_class_name_2 (
-    ea_t colAddress,
-    char *buffer,
-    size_t bufferSize
+Vtable::getTypeName (
+    ea_t vtable,
+    char *result,
+    size_t resultSize
 ) {
-    char vtableType [2048] = {0};
+    if (vtable == BADADDR) {
+        return NULL;
+    }
+
+    ea_t x = get_long (vtable - 4);
+
+    if (!x || (x == BADADDR)) {
+        return NULL;
+    }
+
+    x = get_long (x + 12);
+
+    if (!x || (x == BADADDR)) {
+        return NULL;
+    }
+
+    x = x + 8;
+
+    char curByte;
+    size_t bufferPos = 0;
+
+    while (curByte = get_byte (x)) {
+        result [bufferPos++] = curByte;
+        x++;
+        if (bufferPos > resultSize) {
+            return NULL;
+        }
+    }
+
+    return result;
+}
+
+// Get class name for this vtable instance based on the COL
+char * 
+Vtable::getClassName2 (
+    ea_t colAddress,
+    char *result,
+    size_t resultSize
+) {
+    char vtableType [4096] = {0};
 
     CompleteObjectLocator::get_type_name_by_col (colAddress, vtableType, sizeof (vtableType));
     ea_t i = get_long (colAddress + 16); // CHD
@@ -423,23 +168,23 @@ get_vtable_class_name_2 (
 
     if ((i & 3) == 0 && get_long (colAddress + 4) == 0) { 
         //Single inheritance, so we don't need to worry about duplicate names (several vtables)
-        sprintf_s (buffer, bufferSize, "??_7%s6B@", &vtableType[4]);
-        return buffer;
+        sprintf_s (result, resultSize, "??_7%s6B@", &vtableType[4]);
+        return result;
     }
 
     else {
         // Multiple inheritance 
-        char buffer3[2048] = {0};
-        char *s2 = get_vtable_class_name (colAddress, buffer3, sizeof (buffer3));
-        sprintf_s (buffer, bufferSize, "??_7%s6B%s@", &vtableType[4], &s2[4]);
-        return buffer;
+        char classNameBuffer [4096] = {0};
+        char *s2 = getClassName (colAddress, classNameBuffer, sizeof (classNameBuffer));
+        sprintf_s (result, resultSize, "??_7%s6B%s@", &vtableType[4], &s2[4]);
+        return result;
     }
 
     return NULL;
 }
 
-ea_t 
-get_func_start (
+ea_t
+Vtable::getFuncStart (
     ea_t address
 ) {
     if (IDAUtils::GetFunctionFlags (address) == -1) {
@@ -451,14 +196,177 @@ get_func_start (
     }
 
     else {
-        return IDAUtils::PrevFunction(address);
+        return IDAUtils::PrevFunction (address);
     }
+}
+
+
+// Get class name for this vtable instance
+char * 
+Vtable::getClassName (
+    ea_t address,
+    char *result,
+    size_t resultSize
+) {
+    ea_t offset = get_long (address + 4);
+    address = get_long (address + 16); // Class Hierarchy Descriptor
+
+    ea_t a = get_long (address + 12); // pBaseClassArray
+    size_t numBaseClasses = get_long (address + 8);  //numBaseClasses
+    size_t i = 0;
+    result[0] = '\0';
+    
+    while (i < numBaseClasses) 
+    {
+        ea_t p = get_long (a);
+
+        if (get_long (p + 8) == offset) {
+            // Found it
+            return IDAUtils::GetAsciizStr (get_long (p) + 8, result, resultSize);
+        }
+
+        i++;
+        a += 4;
+    }
+
+    // Didn't find matching one, let's get the first vbase
+    i = 0;
+    a = get_long (address + 12);
+
+    while (i < numBaseClasses) 
+    {
+        ea_t p = get_long (a);
+
+        if (get_long (p + 12) != -1)  {
+            return IDAUtils::GetAsciizStr (get_long (p) + 8, result, resultSize);
+        }
+
+        i++;
+        a += 4;
+    }
+
+    return result;
+}
+
+void
+Vtable::createStruct (
+    ea_t vtableAddress,
+    size_t methodsCount,
+    char *className  
+) {
+    if (strlen (className) == 0) {
+        return;
+    }
+
+    char structName [4096] = {0};
+    sprintf_s (structName, sizeof (structName), "%s_vtable", className);
+
+    tid_t struct_id = IDAUtils::GetStrucIdByName (structName);
+
+    if (struct_id != -1) {
+        return;
+    }
+
+    struct_id = IDAUtils::AddStrucEx (-1, structName, 0);
+
+    if (struct_id == -1) {
+        msg ("Could not create the vtable structure %s !\n", structName);
+        return;
+    }
+
+    for (size_t i = 0 ; i < methodsCount ; i++)
+    {
+        char methodName[4096] = {0};
+        ea_t methodAddress = get_long (vtableAddress + i * 4);
+        if (!methodAddress) {
+            continue;
+        }
+
+        IDAUtils::Name (methodAddress, methodName, sizeof (methodName));
+
+        if (strlen (methodName) == 0) {
+            continue;
+        }
+
+        IDAUtils::ForceMethodMember (struct_id, i * 4, methodName, sizeof (methodName));
+    }
+}
+
+Vtable *
+Vtable::parse (
+    ea_t address,
+    size_t methodsCount
+) {
+    char typeName [4096] = {0};
+    char className [4096] = {0};
+    char classNameMangled [4096] = {0};
+    char COLName[4096] = {0};
+
+    getTypeName (address, typeName, sizeof (typeName));
+    Vtable *result = NULL;
+
+    if (strncmp (typeName, ".?A", 3) == 0)
+    {
+        IDAUtils::Unknown (address - 4, 4);
+        IDAUtils::SoftOff (address - 4);
+        ea_t i = get_long (address - 4);  // COL
+        ea_t s2 = get_long (i + 4); // offset
+        i = get_long (i + 16); // CHD
+        i = get_long (i + 4);  // Attributes
+
+        char className [4096] = {0};
+
+        if ((i & 3) == 0 && s2 == 0) {
+            // Single inheritance, so we don't need to worry about duplicate names (several vtables)
+            sprintf_s (classNameMangled, sizeof (classNameMangled), "??_7%s6B@", &typeName[4]);
+
+            // Set the VFTable name
+            IDAUtils::MakeName (address, classNameMangled);
+            
+            // Get the demangled name
+            get_short_name (BADADDR, address, className, sizeof (className));
+
+            result = new Vtable (address, className, methodsCount);
+
+            // Set the RTTI Complete Object Locator name
+            sprintf_s (COLName, sizeof (COLName), "??_R4%s6B@", &typeName[4]);
+            IDAUtils::MakeName (get_long (address - 4), COLName);
+        }
+
+        else {
+            // Multiple inheritance
+            char buffer [4096] = {0};
+            char vtableName [4096] = {0};
+            getClassName (get_long (address - 4), vtableName, sizeof (vtableName));
+            sprintf_s (buffer, sizeof (buffer), "%s6B%s@", &typeName[4], &vtableName[4]);
+            sprintf_s (vtableName, sizeof (vtableName),  "??_7%s", buffer);
+            sprintf_s (COLName, sizeof (COLName), "??_R4%s", buffer);
+
+            // Set the VFTable name
+            IDAUtils::MakeName (address, vtableName);
+
+            // Get the demangled name
+            get_short_name (BADADDR, address, className, sizeof (className));
+            
+            // Filter the class name
+            result = new Vtable (address, className, methodsCount);
+            
+            // Set the RTTI Complete Object Locator name
+            IDAUtils::MakeName (get_long (address - 4), COLName);
+        }
+
+        if (result != NULL) {
+            createStruct (address, methodsCount, result->className);
+        }
+    }
+
+    return result;
 }
 
 
 //check for `scalar deleting destructor'
 ea_t
-checkSDD (
+Vtable::checkSDD (
     ea_t address,
     char *name,
     ea_t vtable,
@@ -490,7 +398,6 @@ checkSDD (
         a = IDAUtils::getRelJmpTarget (address + 3);
         t = checkSDD (a, name, vtable, 0);
         if (t && name != NULL) {
-            char buffer[2048] = {0};
             //rename this function as a thunk
             IDAUtils::MakeName (address, IDAUtils::MakeSpecialName (name, t, IDAUtils::Byte (address + 2), buffer, sizeof (buffer)));
         }
@@ -506,7 +413,6 @@ checkSDD (
         t = checkSDD (a, name, vtable, 0);
 
         if (t && name != NULL) {
-            char buffer[2048] = {0};
             //rename this function as a thunk
             char *specialName = IDAUtils::MakeSpecialName (name,t, IDAUtils::Dword (address+2), buffer, sizeof (buffer));
             IDAUtils::MakeName (address, specialName);
@@ -683,13 +589,11 @@ checkSDD (
 
     if (t > 0) {
         if (name != NULL) {
-            char buffer[2048] = {0};
             IDAUtils::MakeName (address, IDAUtils::MakeSpecialName (name, t, 0, buffer, sizeof (buffer)));
         }
 
         if (a != BADADDR) {
             if (name != NULL) {
-                char buffer[2048] = {0};
                 IDAUtils::MakeName(a, IDAUtils::MakeSpecialName(name, SN_vdestructor, 0, buffer, sizeof (buffer)));
             }
         }
@@ -700,101 +604,3 @@ checkSDD (
     return t;
 }
 
-
-/*
-* @brief : Check if there's a vtable at address, and dump into to output
-* @param address : The vtable address. Can point to any address.
-* @param output : An opened FILE
-* @return position after the end of vtable
-*/
-ea_t 
-do_vtable (
-    DecMap *decMap,
-    ea_t address
-) {
-    size_t vtableMethodsCount = get_vtable_methods_count (address);
-    ea_t endTable;
-    ea_t p;
-    char buffer[2048] = {0};
-
-    if (!vtableMethodsCount) {
-        // No vtable found at this address, return the next address
-        return address + 4;
-    }
-    
-    //check if it's named as a vtable
-    char bufName[2048];
-    char *name = IDAUtils::Name (address, bufName, sizeof (bufName));
-    if (strncmp (name, "??_7", 4) != 0) {
-        name = NULL;
-    }
-    
-    endTable = get_long (address - 4);
-
-    if (CompleteObjectLocator::isValid (endTable)) {
-        parse_vtable (decMap, address, vtableMethodsCount);
-        if (name == NULL) {
-            name = get_vtable_class_name_2 (endTable, buffer, sizeof (buffer));
-        }
-        // only output object tree for main vtable
-        if (get_long (endTable + 4) == 0) {
-            CRTTIClassHierarchyDescriptor::parse2 (get_long (endTable + 16));
-        }
-
-        IDAUtils::MakeName(address, name);
-    }
-
-    if (name != NULL) {
-        int typeinfoPos = str_pos (name, "@@6B");
-        name[typeinfoPos+2] = '\0';
-        char buffer2[2048];
-        //convert vtable name into typeinfo name
-        sprintf_s (buffer2, sizeof (buffer2), ".?AV%s", &name[4]);
-        name = buffer2;
-    }
-    
-    IDAUtils::DeleteArray (IDAUtils::GetArrayId ("AddrList"));
-    int q = 0; int i = 1;
-
-    for (endTable = IDAUtils::DfirstB (address); endTable != BADADDR; endTable = IDAUtils::DnextB (address, endTable))
-    {
-        p = get_func_start (endTable);
-
-        if (p != BADADDR)
-        {
-            if (q == p) {
-                i++;
-            }
-
-            else {           
-                if (q) {
-                    IDAUtils::AddAddr(q);
-                }
-                i = 1;
-                q = p;
-            }
-        }
-    }
-    if (q) {
-        IDAUtils::AddAddr(q);
-    }
-    
-    endTable = address;
-
-    while (vtableMethodsCount > 0)
-    {
-        p = get_long (endTable);
-        if (IDAUtils::GetFunctionFlags(p) == -1) {
-            IDAUtils::MakeCode(p);
-            IDAUtils::MakeFunction (p, BADADDR);
-        }
-        
-        checkSDD (p, name, address, 0);
-        vtableMethodsCount--;
-        endTable += 4;
-    }
-
-    IDAUtils::doAddrList (name);
-    
-    return endTable;
-}

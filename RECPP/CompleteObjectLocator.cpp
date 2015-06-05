@@ -20,7 +20,7 @@ CompleteObjectLocator::parse (
     }
     
     char buffer2[2048] = {0};
-    char *cloName = IDAUtils::getAsciizStr (get_long (address + 12) + 8, buffer2, sizeof (buffer2));
+    char *cloName = IDAUtils::GetAsciizStr (get_long (address + 12) + 8, buffer2, sizeof (buffer2));
 
     IDAUtils::DwordCmt (address, "signature");
     IDAUtils::DwordCmt (address + 4, "offset");
@@ -64,5 +64,5 @@ CompleteObjectLocator::get_type_name_by_col (
         return NULL;
     }
 
-    return IDAUtils::getAsciizStr (x + 8, buffer, bufferSize);
+    return IDAUtils::GetAsciizStr (x + 8, buffer, bufferSize);
 };

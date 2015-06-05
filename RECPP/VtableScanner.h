@@ -10,32 +10,43 @@
 
 #pragma once
 
-
 // ---------- Includes ------------
 #include "RECPP.h"
-#include "callgraph.h"
+#include "Vtable.h"
+#include "DecMap.h"
 
 // ---------- Defines -------------
 
 
 // ------ Class definition --------
-
-class graph_info_t;
-
-class DecMap {
-public:
-    DecMap ();
-    ~DecMap ();
-
-    int node_count;
+class VtableScanner {
+    public:
+    VtableScanner (DecMap *decMap);
+    ~VtableScanner ();
     
-    // Map address -> cfunc_t
-    typedef std::map<ea_t, cfunc_t *> ea_cf_map_t;
-    typedef std::map<ea_t, graph_info_t *> ea_gi_map_t;
-    ea_cf_map_t ea2cf;
-    ea_gi_map_t ea2gi;
+    bool
+    VtableScanner::scan (
+        void
+    );
+    
 
-    void DecMap::decompile_function (graph_info_t *gi, ea_t func_ea);
-    void DecMap::process (cfunc_t *cfunc);
+    ea_t
+    VtableScanner::checkVtable (
+        ea_t address
+    );
+
+    private:
+        std::vector <Vtable *> vtables;
+        DecMap *decMap;
+        
+        /*
+        * @brief : Get a vtable size
+        * @param curAddress : The vtable address. Can point to any address.
+        * @return 0 if no vtable is at \address, or the number of methods of the vtable if detected
+        */
+        static size_t 
+        VtableScanner::getVtableMethodsCount (
+            ea_t curAddress
+        );
 };
 

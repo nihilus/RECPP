@@ -32,9 +32,32 @@ str_pos (const char *str, const char *search)
 	return str_n_pos ((char *) str, search, strlen (str));
 }
 
+std::string string_vsprintf (const char* format, std::va_list args) 
+{
+    va_list tmp_args; //unfortunately you cannot consume a va_list twice
+    va_copy(tmp_args, args); //so we have to copy it
+    const int required_len = vsnprintf(nullptr, 0, format, tmp_args) + 1;
+    va_end(tmp_args);
+
+    std::string buf(required_len, '\0');
+    if (std::vsnprintf(&buf[0], buf.size(), format, args) < 0) {
+        throw std::runtime_error{"string_vsprintf encoding error"};
+    }
+    return buf;
+}
+
+std::string IDAUtils::string_sprintf (const char* format, ...) 
+{
+    // Thanks to : http://codereview.stackexchange.com/a/52572
+    std::va_list args;
+    va_start(args, format);
+    std::string str {string_vsprintf(format, args)};
+    va_end(args);
+    return str;
+}
 
 char *
-IDAUtils::getAsciizStr (
+IDAUtils::GetAsciizStr (
     ea_t address,
     char *buffer,
     size_t bufferSize
@@ -332,7 +355,7 @@ IDAUtils::doAddrList (
     }
 
     if (ctr != 0 && dtr != 0) {
-        char buffer[2048] = {0};
+        char buffer[4096] = {0};
         IDAUtils::MakeName(ctr, IDAUtils::MakeSpecialName (name, SN_constructor, 0, buffer, sizeof (buffer)));
     }
 
